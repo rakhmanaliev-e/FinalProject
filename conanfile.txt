@@ -1,0 +1,6 @@
+[requires]
+sdl/2.0.20
+
+
+[generators]
+cmake
