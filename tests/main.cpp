@@ -139,7 +139,7 @@ public:
 int main(int argc, char* argv[])
 {
 	Canvas proj;
-	proj.setName("TestCase");
+	proj.setName("HanoyTowers");
 	proj.run();
 	// Canvas::start
 	return 0;

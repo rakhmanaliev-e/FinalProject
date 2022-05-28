@@ -1,9 +1,6 @@
 #pragma once
 
 #include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-#include <SDL_gfx.h>
 #include <string>
 #include <stdio.h>
 
@@ -16,16 +13,15 @@ private:
 	int __drawupdaterate = 1;
 
 	// camera vector
-	int translate[2][2];
-	// rotation vector
+	double __angle{ 0 };
+	SDL_Point __centerPoint{ 0,0 };
 
 	std::string __winName;
 	int __fillstate = 1;
 
 	SDL_Window* __window;
-
-	SDL_Surface* __surface = NULL;
 	SDL_Renderer* __renderer = NULL;
+
 
 	int	__initWithSettings();
 	void __initSDL(); 
@@ -53,9 +49,9 @@ protected:
 	void fill(float col);
 	void fill(float r, float g, float b);
 	void rect(float x, float y, float width, float height);
-	void circle(int x, int y, int r);
+	void circle(float x, float y, float r);
 	void line(int startx, int starty, int endx, int endy);
-	void triangle(int ax, int ay, int bx, int by, int cx, int cy);
+	void triangle(float ax, float ay, float bx, float by, float cx, float cy);
 	//void text(std::string text, float x, float y);
 
 public:

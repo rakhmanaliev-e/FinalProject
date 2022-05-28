@@ -22,3 +22,7 @@ target_link_libraries(HanoyTower ${LIBRARIES})
 
 add_executable(RunningBlock ${SOURCES} tests/test.cpp)
 target_link_libraries(RunningBlock ${LIBRARIES})
+
+add_executable(puresdl tests/field.cpp)
+target_link_libraries(puresdl ${LIBRARIES})
+

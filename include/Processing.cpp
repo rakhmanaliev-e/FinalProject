@@ -1,5 +1,6 @@
 #include "Processing.h"
-
+#include <vector>
+#include <algorithm>
 //void Processing::settings() {}	// to be overridden by user
 //void Processing::setup()	{}	//to be overriden by user
 //void Processing::draw()		{}	// to be overridden by user
@@ -166,71 +167,129 @@ void Processing::fill(float r, float g, float b) {
 
 void Processing::rect(float x, float y, float width, float height)
 {
-	SDL_Rect rectangle = { (int)round(x), (int)round(y), 
+	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, width, height);
+	SDL_SetRenderTarget(__renderer, tempTexture);
+
+
+	SDL_Rect rectangle = { 0, 0, 
 						(int)round(width), (int)round(height)};
+	
 	if (__fillstate == 1) {
 		SDL_RenderFillRect(__renderer, &rectangle);
 	}
 	else {
 		SDL_RenderDrawRect(__renderer, &rectangle);
-		
+
 	}
+
+	SDL_SetRenderTarget(__renderer, NULL);
+
+	SDL_Rect dest{ x, y, width, height};
+	SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
+
+	SDL_DestroyTexture(tempTexture);
+
 }
 
-void Processing::circle(int x, int y, int r) {
-	const int diameter = (r * 2);
+void Processing::circle(float x, float y, float r) {
+	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, r*2+1, r*2+1);
+	SDL_SetRenderTarget(__renderer, tempTexture);
 
-	int offx = (r - 1);
-	int offy = 0;
-	int tx = 1;
-	int ty = 1;
-	int error = (tx - diameter);
+	const float eps{ 0.0000001f };
+	float sqrr{ r * r };
+	for (int ty = 0; ty <= r; ++ty) {
+		float compY{ ty * ty + sqrr - 2 * ty * r };
+		for (int tx = 0; tx <= r; ++tx) {
+			float compX{ tx * tx - 2 * tx * r };
 
-	while (x >= y)
-	{
-		//  Each of the following renders an octant of the circle
-		SDL_RenderDrawPoint(__renderer, x + offx, y - offy);
-		SDL_RenderDrawPoint(__renderer, x + offx, y + offy);
+			float point{compX + compY}; // reduced sqrr from compX already
 
-		SDL_RenderDrawPoint(__renderer, x - offx, y - offy);
-		SDL_RenderDrawPoint(__renderer, x - offx, y + offy);
-
-		SDL_RenderDrawPoint(__renderer, x + offy, y - offx);
-		SDL_RenderDrawPoint(__renderer, x + offy, y + offx);
-
-		SDL_RenderDrawPoint(__renderer, x - offy, y - offx);
-		SDL_RenderDrawPoint(__renderer, x - offy, y + offx);
-
-		if (error <= 0)
-		{
-			++offy;
-			error += ty;
-			ty += 2;
-		}
-
-		if (error > 0)
-		{
-			--offx;
-			tx += 2;
-			error += (tx - diameter);
+			if (point < eps) {
+				if (!__fillstate) {
+					if (point > -eps) { // only the edje
+						SDL_RenderDrawPoint(__renderer, x + tx, y + ty);
+						SDL_RenderDrawPoint(__renderer, x + tx, y - ty);
+						SDL_RenderDrawPoint(__renderer, x - tx, y + ty);
+						SDL_RenderDrawPoint(__renderer, x - tx, y - ty);
+					}
+				}
+				else { // inside the circle
+					SDL_RenderDrawPoint(__renderer, x + tx, y + ty);
+					SDL_RenderDrawPoint(__renderer, x + tx, y - ty);
+					SDL_RenderDrawPoint(__renderer, x - tx, y + ty);
+					SDL_RenderDrawPoint(__renderer, x - tx, y - ty);
+				}
+			}
 		}
 	}
+	SDL_SetRenderTarget(__renderer, NULL);
+	
+	SDL_Rect dest{x - r, y - r, x+r, y+r};
+	SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest , __angle, &__centerPoint, SDL_FLIP_NONE);
+
+	SDL_DestroyTexture(tempTexture);
+
 }
+
 void Processing::line(int startx, int starty, int endx, int endy) {
 	SDL_RenderDrawLine(__renderer, startx, starty, endx, endy);
 }
 
-void Processing::triangle(int ax, int ay, int bx, int by, int cx, int cy) {
-	line(ax, ay, bx, by);
-	line(ax, ay, cx, cy);
-	line(bx, by, cx, cy);
+void Processing::triangle(float ax, float ay, float bx, float by, float cx, float cy) {
+	if (!__fillstate) {
+		line(ax, ay, bx, by);
+		line(bx, by, cx, cy);
+		line(cx, cy, ax, ay);
+	
+	} else {
+		int boundminx = std::min((int)ax, std::min((int)bx, (int)cx));
+		int boundmaxx = std::max((int)ax, std::max((int)bx, (int)cx));
+
+		int boundminy = std::min((int)ay, std::min((int)by, (int)cy));
+		int boundmaxy = std::max((int)ay, std::max((int)by, (int)cy));
+
+		SDL_Point pts[3] = {{(int)ax - boundminx, (int)ay - boundminy},
+							{(int)bx - boundminx, (int)by - boundminy},
+							{(int)cx - boundminx, (int)cy - boundminy} };
+
+		std::vector<SDL_Point> edges;
+		for (int i = 0; i < 2; ++i) {
+			int ind1 = i, ind2 = (i+1) % 3;
+			if (pts[ind1].y != pts[ind2].y) {
+				if (pts[ind1].y > pts[ind2].y) {
+					int t = ind1;
+					ind1 = ind2;
+					ind2 = t;
+				}
+				int leny = pts[ind2].y - pts[ind1].y;
+				int lenx = pts[ind2].x - pts[ind2].x;
+
+				float k = static_cast<float>(lenx) / leny;
+
+				int cnt = 0;
+				for (int ty = pts[ind1].y; ty < pts[ind2].y; ++ty) {
+					int tx = static_cast<int>((pts[ind1].x + (k * cnt)));
+					edges.push_back({tx, ty});
+					cnt++;
+				}
+			}
+		}
+		SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, boundmaxx - boundminx, boundmaxy - boundminy);
+		SDL_SetRenderTarget(__renderer, tempTexture);
+	
+	
+		std::sort(edges.begin(), edges.end(), [](SDL_Point a, SDL_Point b) {return (a.y != b.y ? a.y < b.y : a.x < b.x); });
+		for (int i = 0; i < edges.size() - 1; i += 2) {
+			int ind1 = i, ind2 = i + 1;
+			for (int tx = edges[ind1].x; tx <= edges[ind2].x; ++tx) {
+				SDL_RenderDrawPoint(__renderer, tx, edges[i].y);
+			}
+		}
+		SDL_SetRenderTarget(__renderer, NULL);
+
+		SDL_Rect dest{ boundminx, boundminy, boundmaxy - boundminx,  boundmaxy - boundminy };
+		SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
+
+		SDL_DestroyTexture(tempTexture);
+	}
 }
-/**
-void Processing::text(std::string text, float x, float y) {
-	//needs SDL_ttf.h which is not added yet
-	//SDL_Surface* surfMessage = TTF
-
-
-
-}
-*/
