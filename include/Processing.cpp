@@ -19,19 +19,30 @@ void Processing::run() {
 
 	while (!quit) {
 
-		while (SDL_PollEvent(&e) != 0) { // event for window closing
-			if (e.type == SDL_QUIT) {
+		if (SDL_PollEvent(&e) != NULL) { // event for window closing
+			switch (e.type) {
+			case SDL_QUIT:
 				quit = true;
+				break;
+			case SDL_KEYDOWN:
+			case SDL_KEYUP:		//keyboard handling
+
+				key = SDL_GetKeyName(e.key.keysym.sym);
+				
+				break;
 			}
 		}
+		else {
+			_keyPressed = 0;
+		}
 
-
+		keyPressed();
 		draw(); // user space
 
 		SDL_Delay(__drawupdaterate);
 		SDL_RenderPresent(__renderer);
 
-		
+		frameCount++;
 	}
 
 	__close();
@@ -119,9 +130,11 @@ void Processing::size(int width, int height) {
 	SCREEN_WIDTH = width;
 	SCREEN_HEIGHT = height;
 }
-void Processing::setwait(int waittime) {
-	if (waittime > 0)
-		__drawupdaterate = waittime;
+
+// Number of desired frames per second
+void Processing::frameRate(float fps) {
+	Uint32 ms = (fps <= 0 ? 0 : (int)(1000 / fps));
+	__drawupdaterate = ms;
 }
 
 void Processing::background(int col) {
@@ -174,7 +187,7 @@ void Processing::rect(float x, float y, float width, float height)
 	SDL_Rect rectangle = { 0, 0, 
 						(int)round(width), (int)round(height)};
 	
-	if (__fillstate == 1) {
+	if (__fillstate) {
 		SDL_RenderFillRect(__renderer, &rectangle);
 	}
 	else {
@@ -194,37 +207,38 @@ void Processing::rect(float x, float y, float width, float height)
 void Processing::circle(float x, float y, float r) {
 	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, r*2+1, r*2+1);
 	SDL_SetRenderTarget(__renderer, tempTexture);
-
-	const float eps{ 0.0000001f };
+	float prev{1};
+	float eps{ 0.01f };
 	float sqrr{ r * r };
 	for (int ty = 0; ty <= r; ++ty) {
-		float compY{ ty * ty + sqrr - 2 * ty * r };
+		float compY{ (ty - r) * (ty - r) };
 		for (int tx = 0; tx <= r; ++tx) {
-			float compX{ tx * tx - 2 * tx * r };
+			float compX{ (tx - r) * (tx - r)};
 
-			float point{compX + compY}; // reduced sqrr from compX already
+			float point{compX + compY - sqrr}; // reduced sqrr from compX already
 
-			if (point < eps) {
-				if (!__fillstate) {
-					if (point > -eps) { // only the edje
-						SDL_RenderDrawPoint(__renderer, x + tx, y + ty);
-						SDL_RenderDrawPoint(__renderer, x + tx, y - ty);
-						SDL_RenderDrawPoint(__renderer, x - tx, y + ty);
-						SDL_RenderDrawPoint(__renderer, x - tx, y - ty);
+			if (point <= eps) {
+				if (__strokestate) {
+					if (prev * point <= 0) { // only the edje
+						SDL_RenderDrawPoint(__renderer, tx, ty);
+						SDL_RenderDrawPoint(__renderer, r*2 - tx, ty);
+						SDL_RenderDrawPoint(__renderer, tx, r*2 - ty);
+						SDL_RenderDrawPoint(__renderer, r*2 - tx, r*2 - ty);
 					}
 				}
-				else { // inside the circle
-					SDL_RenderDrawPoint(__renderer, x + tx, y + ty);
-					SDL_RenderDrawPoint(__renderer, x + tx, y - ty);
-					SDL_RenderDrawPoint(__renderer, x - tx, y + ty);
-					SDL_RenderDrawPoint(__renderer, x - tx, y - ty);
+				if (__fillstate){ // inside the circle
+					//SDL_RenderDrawPoint(__renderer, tx, ty);
+					//SDL_RenderDrawPoint(__renderer, r * 2 - tx, ty);
+					//SDL_RenderDrawPoint(__renderer, tx, r * 2 - ty);
+					//SDL_RenderDrawPoint(__renderer, r * 2 - tx, r * 2 - ty);
 				}
 			}
+
 		}
 	}
 	SDL_SetRenderTarget(__renderer, NULL);
 	
-	SDL_Rect dest{x - r, y - r, x+r, y+r};
+	SDL_Rect dest{x - r, y - r, r*2, r*2};
 	SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest , __angle, &__centerPoint, SDL_FLIP_NONE);
 
 	SDL_DestroyTexture(tempTexture);

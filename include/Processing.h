@@ -10,7 +10,7 @@ class Processing {
 private:
 	int SCREEN_WIDTH = 640;
 	int SCREEN_HEIGHT = 480;
-	int __drawupdaterate = 1;
+	Uint32 __drawupdaterate = 1;
 
 	// camera vector
 	double __angle{ 0 };
@@ -18,6 +18,7 @@ private:
 
 	std::string __winName;
 	int __fillstate = 1;
+	int __strokestate = 1;
 
 	SDL_Window* __window;
 	SDL_Renderer* __renderer = NULL;
@@ -30,16 +31,20 @@ private:
 	
 	void __close();
 protected:
+	long long frameCount = 0;
+	bool _keyPressed = 0;
+	const char* key = nullptr;
 	class SmartPointer;
 
 	// main functions to be overridden by user
-	virtual void settings() = 0;
-	virtual void setup() = 0;
-	virtual void draw() = 0;
+	virtual void settings() {};
+	virtual void setup() {};
+	virtual void draw() {};
+	virtual void keyPressed() {};
 
 	// utilities
+	void frameRate(float fps);
 	void size(int width, int height);
-	void setwait(int waittime);
 	void background(int col);
 	void background(int r, int g, int b);
 	void wait(int amount);
