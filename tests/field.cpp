@@ -1,5 +1,4 @@
 #include <SDL.h>
-#include <iostream>
 
 SDL_Point center{ -45, -45};
 int fillstate = 1;
@@ -64,7 +63,7 @@ int main(int argc, char* argv[])
 			SDL_RenderDrawLine(renderer, i, 0, i, 300);
 			SDL_RenderDrawLine(renderer, 0, i, 300, i);
 		}
-		std::cout << 
+
 		drawrect(renderer, x, y, 10, 20, agl);
 		agl += dx;
 		if (x <= 0 || x >= 300 - 10) { dx *= -1; }

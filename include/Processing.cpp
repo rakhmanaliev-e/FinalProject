@@ -1,13 +1,28 @@
 #include "Processing.h"
 #include <vector>
 #include <algorithm>
+#include <memory>
 //void Processing::settings() {}	// to be overridden by user
 //void Processing::setup()	{}	//to be overriden by user
 //void Processing::draw()		{}	// to be overridden by user
 
+/*
+	Plans: 
+later				rearrange methods in different order
+along with code		add comments
+					finish the drawign shapes
+		finish transformations
+		rewrite colors (different colors for stroke and fill) 
+		(possibly different algorithms for fill and draw)
+
+*/
+
+
 void Processing::run() {
 	__window = NULL;
 	__renderer = NULL;
+
+	// initialization:
 	if (__initWithSettings() == -1) {
 		return;
 	}
@@ -15,32 +30,44 @@ void Processing::run() {
 
 	bool quit = false;
 
-	SDL_Event e;
+	std::unique_ptr<SDL_Event> past_e;
+	std::unique_ptr<SDL_Event> e;
 
+	// main loop for draw and events
 	while (!quit) {
 
-		if (SDL_PollEvent(&e) != NULL) { // event for window closing
-			switch (e.type) {
+		while (SDL_PollEvent(e.get()) != NULL) {
+			switch (e->type) {
 			case SDL_QUIT:
 				quit = true;
 				break;
 			case SDL_KEYDOWN:
-			case SDL_KEYUP:		//keyboard handling
+				_keyPressed = 1;
+				key = SDL_GetKeyName(e->key.keysym.sym);
+				keyPressed();
 
-				key = SDL_GetKeyName(e.key.keysym.sym);
-				
+				break;
+			case SDL_KEYUP:		//keyboard handling
+				key = SDL_GetKeyName(e->key.keysym.sym);
+				keyReleased();
+				_keyPressed = 0; // might cause some problems with this bool
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+
+			case SDL_MOUSEBUTTONUP:
+			case SDL_MOUSEMOTION:
 				break;
 			}
+			e.swap(past_e);
 		}
-		else {
-			_keyPressed = 0;
-		}
-
-		keyPressed();
 		draw(); // user space
+
+		pmouseX = e->motion.x;
+		pmouseY = e->motion.y;
 
 		SDL_Delay(__drawupdaterate);
 		SDL_RenderPresent(__renderer);
+
 
 		frameCount++;
 	}
@@ -49,8 +76,8 @@ void Processing::run() {
 }
 
 int Processing::__initWithSettings() {
-	SCREEN_WIDTH = 640;
-	SCREEN_HEIGHT = 480;
+	width = 640;
+	height = 480;
 	try {
 		__initSDL();
 	}
@@ -105,7 +132,7 @@ void Processing::__initWindow()
 {
 	char* name = &__winName[0];
 	__window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-					SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+					width, height, SDL_WINDOW_SHOWN);
 	if (__window == NULL)
 	{
 		throw("Window init fail.");
@@ -126,10 +153,28 @@ void Processing::__initRender()
 
 // utilities
 
-void Processing::size(int width, int height) {
-	SCREEN_WIDTH = width;
-	SCREEN_HEIGHT = height;
+int Processing::size(int width, int height) {
+	// change of the internal data
+	this->width = width;
+	this->height = height;
+	if (__window != NULL) {
+		// TODO: check if resizable flag works onlt withing the use and
+		//		 does not break any outer functionality
+		SDL_SetWindowResizable(__window, SDL_TRUE);
+		SDL_SetWindowSize(__window, width, height);
+	}
 }
+
+void Processing::fullScreen() {
+	// there is a potential of setting fullscreen to a different screen. 
+	// possible future change might be made here.
+	std::unique_ptr<SDL_DisplayMode> display;
+	int err = SDL_SetWindowDisplayMode(__window, NULL);
+	if (err) {
+		throw("Could not set Window to fullScreen.");
+	}
+}
+
 
 // Number of desired frames per second
 void Processing::frameRate(float fps) {

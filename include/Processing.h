@@ -8,8 +8,6 @@
 class Processing {
 
 private:
-	int SCREEN_WIDTH = 640;
-	int SCREEN_HEIGHT = 480;
 	Uint32 __drawupdaterate = 1;
 
 	// camera vector
@@ -31,20 +29,41 @@ private:
 	
 	void __close();
 protected:
+	int width = 640;
+	int height = 480;
+
 	long long frameCount = 0;
 	bool _keyPressed = 0;
+	bool _mousePressed = 0;
+	int pmouseX = 0;
+	int pmouseY = 0;
+	// find out how to update mouse position real time
+	int mouseX = 0;
+	int mouseY = 0;
+
 	const char* key = nullptr;
-	class SmartPointer;
+	const char* mouseButton = nullptr;
+
+
 
 	// main functions to be overridden by user
 	virtual void settings() {};
 	virtual void setup() {};
 	virtual void draw() {};
 	virtual void keyPressed() {};
+	virtual void keyReleased() {};
+	// new:
+	virtual void mouseClicked() {};
+	virtual void mouseDragged() {};
+	virtual void mouseMoved() {};
+	virtual void mousePressed() {};
+	virtual void mouseReleased() {};
+	virtual void mouseWheel() {};
 
 	// utilities
 	void frameRate(float fps);
-	void size(int width, int height);
+	int size(int width, int height);
+	void fullScreen();
 	void background(int col);
 	void background(int r, int g, int b);
 	void wait(int amount);
@@ -61,22 +80,8 @@ protected:
 
 public:
 	Processing() {}
-	virtual ~Processing() { __close(); }
+	virtual ~Processing() {}
 	void run();
 	void setName(std::string name);
 };
 
-
-
-template <class T>
-class SmartPtr {
-	T* ptr;
-public:
-	explicit SmartPtr(T* p = NULL) { ptr = p; }
-
-	~SmartPtr() { delete (ptr); }
-
-	T& operator*() { return *ptr; }
-
-	T* operator->() { return ptr; }
-};
