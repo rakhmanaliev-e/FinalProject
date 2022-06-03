@@ -14,7 +14,7 @@ along with code		add comments
 		finish transformations
 		rewrite colors (different colors for stroke and fill) 
 		(possibly different algorithms for fill and draw)
-
+		consider splitting draw methods into strokedraw and filldraw
 */
 
 
@@ -56,6 +56,9 @@ void Processing::run() {
 
 			case SDL_MOUSEBUTTONUP:
 			case SDL_MOUSEMOTION:
+
+				//TODO: 
+
 				break;
 			}
 			e.swap(past_e);
@@ -214,6 +217,7 @@ void Processing::fill(float col) {
 }
 
 void Processing::fill(float r, float g, float b) {
+	// remake as fill and stroke colors do differ
 	if (r > 255 || r < 0 || 
 		g > 255 || g < 0 || 
 		b > 255 || b < 0) 
@@ -225,7 +229,8 @@ void Processing::fill(float r, float g, float b) {
 
 void Processing::rect(float x, float y, float width, float height)
 {
-	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, width, height);
+	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, 
+		SDL_TEXTUREACCESS_TARGET, width, height);
 	SDL_SetRenderTarget(__renderer, tempTexture);
 
 
@@ -243,14 +248,16 @@ void Processing::rect(float x, float y, float width, float height)
 	SDL_SetRenderTarget(__renderer, NULL);
 
 	SDL_Rect dest{ x, y, width, height};
-	SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
+	SDL_RenderCopyEx(__renderer, tempTexture, 
+		NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
 
 	SDL_DestroyTexture(tempTexture);
 
 }
 
 void Processing::circle(float x, float y, float r) {
-	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, r*2+1, r*2+1);
+	SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, 
+		SDL_TEXTUREACCESS_TARGET, r*2+1, r*2+1);
 	SDL_SetRenderTarget(__renderer, tempTexture);
 	float prev{1};
 	float eps{ 0.01f };
@@ -265,6 +272,8 @@ void Processing::circle(float x, float y, float r) {
 			if (point <= eps) {
 				if (__strokestate) {
 					if (prev * point <= 0) { // only the edje
+						// should redo. It does not draw edjes upper and lower the circle
+						// add drawPoint with x,y flipped to do so.
 						SDL_RenderDrawPoint(__renderer, tx, ty);
 						SDL_RenderDrawPoint(__renderer, r*2 - tx, ty);
 						SDL_RenderDrawPoint(__renderer, tx, r*2 - ty);
@@ -272,10 +281,10 @@ void Processing::circle(float x, float y, float r) {
 					}
 				}
 				if (__fillstate){ // inside the circle
-					//SDL_RenderDrawPoint(__renderer, tx, ty);
-					//SDL_RenderDrawPoint(__renderer, r * 2 - tx, ty);
-					//SDL_RenderDrawPoint(__renderer, tx, r * 2 - ty);
-					//SDL_RenderDrawPoint(__renderer, r * 2 - tx, r * 2 - ty);
+					SDL_RenderDrawPoint(__renderer, tx, ty);
+					SDL_RenderDrawPoint(__renderer, r * 2 - tx, ty);
+					SDL_RenderDrawPoint(__renderer, tx, r * 2 - ty);
+					SDL_RenderDrawPoint(__renderer, r * 2 - tx, r * 2 - ty);
 				}
 			}
 
@@ -284,17 +293,22 @@ void Processing::circle(float x, float y, float r) {
 	SDL_SetRenderTarget(__renderer, NULL);
 	
 	SDL_Rect dest{x - r, y - r, r*2, r*2};
-	SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest , __angle, &__centerPoint, SDL_FLIP_NONE);
+	SDL_RenderCopyEx(__renderer, tempTexture, 
+		NULL, &dest , __angle, &__centerPoint, SDL_FLIP_NONE);
 
 	SDL_DestroyTexture(tempTexture);
 
 }
 
 void Processing::line(int startx, int starty, int endx, int endy) {
+	//rewrite: use SDL_FillRect with SDL_RenderCopyEx
 	SDL_RenderDrawLine(__renderer, startx, starty, endx, endy);
 }
 
-void Processing::triangle(float ax, float ay, float bx, float by, float cx, float cy) {
+void Processing::triangle(float ax, float ay, 
+						float bx, float by, 
+						float cx, float cy) 
+{
 	if (!__fillstate) {
 		line(ax, ay, bx, by);
 		line(bx, by, cx, cy);
@@ -333,11 +347,14 @@ void Processing::triangle(float ax, float ay, float bx, float by, float cx, floa
 				}
 			}
 		}
-		SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, SDL_TEXTUREACCESS_TARGET, boundmaxx - boundminx, boundmaxy - boundminy);
+		SDL_Texture* tempTexture = SDL_CreateTexture(__renderer, 0, 
+			SDL_TEXTUREACCESS_TARGET, boundmaxx - boundminx, 
+			boundmaxy - boundminy);
 		SDL_SetRenderTarget(__renderer, tempTexture);
 	
 	
-		std::sort(edges.begin(), edges.end(), [](SDL_Point a, SDL_Point b) {return (a.y != b.y ? a.y < b.y : a.x < b.x); });
+		std::sort(edges.begin(), edges.end(), 
+			[](SDL_Point a, SDL_Point b) {return (a.y != b.y ? a.y < b.y : a.x < b.x); });
 		for (int i = 0; i < edges.size() - 1; i += 2) {
 			int ind1 = i, ind2 = i + 1;
 			for (int tx = edges[ind1].x; tx <= edges[ind2].x; ++tx) {
@@ -346,8 +363,10 @@ void Processing::triangle(float ax, float ay, float bx, float by, float cx, floa
 		}
 		SDL_SetRenderTarget(__renderer, NULL);
 
-		SDL_Rect dest{ boundminx, boundminy, boundmaxy - boundminx,  boundmaxy - boundminy };
-		SDL_RenderCopyEx(__renderer, tempTexture, NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
+		SDL_Rect dest{ boundminx, boundminy, 
+			boundmaxy - boundminx, boundmaxy - boundminy };
+		SDL_RenderCopyEx(__renderer, tempTexture, 
+			NULL, &dest, __angle, &__centerPoint, SDL_FLIP_NONE);
 
 		SDL_DestroyTexture(tempTexture);
 	}
